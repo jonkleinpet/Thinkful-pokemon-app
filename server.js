@@ -11,7 +11,7 @@ console.log(process.env.API_TOKEN);
 const app = express();
 
 app.use(morgan('dev'));
-app.use(helmet());
+app.use(helmet()); // helmet must run before cors, else helmet won't effect cors preflight header
 app.use(cors());
 
 app.use((req, res, next) => {
