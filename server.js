@@ -5,14 +5,15 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const helmet = require('helmet');
-const pokedex = require('./pokedex');
-console.log(process.env.API_TOKEN);
+const router = require('./router');
 
 const app = express();
+const morganSetting = process.env.NODE_ENV === 'production' ? 'tiny' : 'common';
 
-app.use(morgan('dev'));
+app.use(morgan(morganSetting));
 app.use(helmet()); // helmet must run before cors, else helmet won't effect cors preflight header
 app.use(cors());
+app.use(express.json());
 
 app.use((req, res, next) => {
   const apiToken = process.env.API_TOKEN;
@@ -23,45 +24,19 @@ app.use((req, res, next) => {
   next();
 });
 
-const validTypes = [
-  'Bug', 'Dark', 'Dragon', 'Electric', 'Fairy', 'Fighting',
-  'Fire', 'Flying', 'Ghost', 'Grass', 'Ground', 'Ice',
-  'Normal', 'Poison', 'Psychic', 'Rock', 'Steel', 'Water'
-];
+app.use(router);
 
-function handleGetTypes(req, res) {
-  res.json(validTypes);
-}
-
-function handleGetPokemon(req, res) {
-  let results = pokedex.pokemon;
-  let { name, type } = req.query;
-  
-  if (type) {
-    type = type.replace(/^[a-z]/, () => type[0].toUpperCase());
-    if (!validTypes.includes(type)) {
-      return res.status(400).send('type must be a valid type of pokemon');
-    }
-
-    results = results.filter(result => {
-      return result.type.includes(type);
-    });
+app.use((error, req, res, next) => {
+  let response;
+  if (process.env.NODE_ENV === 'production') {
+    response = { error: { message: 'server error' } };
+  } else {
+    response = { error };
   }
+  res.status(500).json(response);
+});
 
-  if (name) {
-    name = name.replace(/^[a-z]/, () => name[0].toUpperCase());
-    results = results.filter(result => {
-      return result.name.includes(name);
-    });
-  }
-  res.send(results);
-}
-
-app.get('/pokemon', handleGetPokemon);
-app.get('/types', handleGetTypes);
-
-
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log(`Server listening at http://localhost:${PORT}`);
